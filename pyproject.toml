@@ -1,0 +1,23 @@
+[project]
+name = "rag-playground"
+version = "0.1.0"
+description = "A playground for exploring and comparing various Retrieval-Augmented Generation (RAG) implementations."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "langchain>=0.3.25",
+    "langchain-chroma>=0.2.4",
+    "langchain-community>=0.3.25",
+    "langchain-core>=0.3.65",
+    "langchain-google-genai>=2.1.5",
+    "langchain-huggingface>=0.3.0",
+    "langgraph>=0.4.8",
+    "matplotlib>=3.10.3",
+    "numba>=0.61.2",
+    "pandas>=2.3.0",
+    "scikit-learn>=1.7.0",
+    "tiktoken>=0.9.0",
+    "typing>=3.10.0.0",
+    "umap-learn>=0.5.7",
+]
