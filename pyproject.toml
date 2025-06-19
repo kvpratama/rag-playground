@@ -13,11 +13,26 @@ dependencies = [
     "langchain-google-genai>=2.1.5",
     "langchain-huggingface>=0.3.0",
     "langgraph>=0.4.8",
+    "langgraph-api>=0.2.56",
+    "langgraph-cli>=0.3.3",
+    "langgraph-sdk>=0.1.70",
     "matplotlib>=3.10.3",
     "numba>=0.61.2",
     "pandas>=2.3.0",
     "scikit-learn>=1.7.0",
+    "sentence-transformers>=4.1.0",
+    "streamlit>=1.46.0",
     "tiktoken>=0.9.0",
     "typing>=3.10.0.0",
     "umap-learn>=0.5.7",
 ]
+
+[build-system]
+requires = ["setuptools>=73.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["raptor"]
+
+[tool.setuptools.package-dir]
+"raptor" = "src/raptor"
