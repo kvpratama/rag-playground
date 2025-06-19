@@ -10,19 +10,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# def init_retriever_node(state: GraphState, configurable: Dict):
-#     """
-#     Initialize the retriever node for the graph state.
-#     """
+def init_retriever_node(state: GraphState, config: Dict):
+    """
+    Initialize the retriever node for the graph state.
+    """
 
-#     logger.info("Retriever initialized successfully.")
-#     return state
+    logger.info(f'Initializing retriever node with URL: {state["url"]} and max depth: {state["max_depth"]}')
+    _ = build_vectorstore(config["configurable"]["thread_id"], state["url"], state["max_depth"])
+
+    logger.info("Retriever initialized successfully.")
+    return state
 
 
 def rag_node(state: GraphState, config: Dict):
     """
     RAG node that retrieves relevant documents based on the question.
     """
+    if "question" not in state or state["question"] == "":
+        return {"answer": ""}
+
     logger.info(f'Running RAG node with question: {state["question"]}')
 
     logger.info(f'Initializing retriever node with URL: {state["url"]} and max depth: {state["max_depth"]}')
