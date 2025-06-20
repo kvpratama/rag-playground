@@ -11,6 +11,5 @@ builder.add_edge(START, "init_retriever_node")
 builder.add_edge("init_retriever_node", "rag_node")
 builder.add_edge("rag_node", END)
 
-# Compile
-memory = MemorySaver()
-workflow = builder.compile(checkpointer=memory)
+# memory = MemorySaver()
+workflow = builder.compile()
