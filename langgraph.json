@@ -1,7 +1,8 @@
 {
     "dockerfile_lines": [],
     "graphs": {
-      "raptor_graph": "./src/raptor/graph.py:workflow"
+      "raptor_graph": "./src/raptor/graph.py:workflow",
+      "crag_graph": "./src/crag/graph.py:workflow"
     },
     "env": "./.env",
     "python_version": "3.13",
