@@ -70,6 +70,26 @@ def init_retriever_node(state: GraphState, config: Dict):
     return {}
 
 
+def should_continue(state: GraphState, config: Dict):
+    """
+    Determine whether to continue the workflow.
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        str: The next node to call
+    """
+
+    logger.info(f"Checking if should continue with question: {state['question']}")
+    if "question" not in state or state["question"] == "":
+        logger.info("Question is empty or not in state, ending workflow.")
+        return "__end__"
+
+    logger.info("Question is not empty, continuing workflow.")
+    return "retrieve"
+
+
 def retrieve(state: GraphState, config: Dict):
     """
     Retrieve documents
