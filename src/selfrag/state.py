@@ -15,4 +15,4 @@ class GraphStateInput(MessagesState):
     urls: List[str]
 
 class GraphStateOutput(MessagesState):
-    generate: str
+    generation: str
