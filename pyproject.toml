@@ -33,9 +33,11 @@ requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["raptor", "crag", "selfrag"]
+packages = ["commonlib", "raptor", "crag", "selfrag", "agenticrag"]
 
 [tool.setuptools.package-dir]
+"commonlib" = "src/commonlib"
 "raptor" = "src/raptor"
 "crag" = "src/crag"
 "selfrag" = "src/selfrag"
+"agenticrag" = "src/agenticrag"
