@@ -9,6 +9,7 @@ from langchain.tools.retriever import create_retriever_tool
 from langchain_core.prompts import PromptTemplate
 from agenticrag.state import GraphState
 from commonlib.vectorstore_utils import build_vectorstore
+from langgraph.config import get_stream_writer
 import logging
 
 
@@ -21,9 +22,13 @@ def init_retriever_node(state: GraphState, config: Dict):
     """
 
     logger.info(f'Initializing retriever node with URL: {state["urls"]}')
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Building vectorstore...*\n"})
+
     _ = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
 
     logger.info("Retriever initialized successfully.")
+    stream_writer({"custom_key": "*Retriever initialized successfully.*\n"})
     return {}
 
 
@@ -73,11 +78,15 @@ def generate_query_or_respond(state: GraphState, config: Dict):
     retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
     retriever_tool = get_retriever_tool(retriever)
     iteration = state.get("iteration", 0)
+    stream_writer = get_stream_writer()
 
     if len(state["messages"]) == 0:
-        logger.info("Initializing messages with system message")
+        logger.info("Initializing assistant with system message")
+        stream_writer({"custom_key": "*Initializing assistant with system message...*\n"})
         state["messages"].append(SystemMessage(content="You are a helpful assistant. Whenever a user asks a question, you will always try to retrieve relevant information from the vectorstore."))
 
+    logger.info("Generating query or response")
+    stream_writer({"custom_key": "*Generating query or response...*\n"})
     state["messages"].append(HumanMessage(content=state["question"]))
     response_model = init_chat_model("gemini-2.0-flash", temperature=0, model_provider="google_genai")
     response = (
@@ -85,6 +94,7 @@ def generate_query_or_respond(state: GraphState, config: Dict):
         # highlight-next-line
         .bind_tools([retriever_tool]).invoke(state["messages"])
     )
+    stream_writer({"custom_key": f"*{response.content}*\n"})
     return {"messages": [response], "iteration": iteration + 1}
 
 
@@ -103,6 +113,10 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
     question = state["question"]
     documents = state["messages"][-1].content
     iteration = state.get("iteration", 0)
+    stream_writer = get_stream_writer()
+
+    logger.info("Checking document relevance to question")
+    stream_writer({"custom_key": "*Checking document relevance to question...*\n"})
 
     # Data model
     class GradeDocuments(BaseModel):
@@ -141,9 +155,11 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
     
     if score == "yes" or iteration >= 3:
         logger.info(f"Documents are relevant to the question, generating answer. Iteration: {iteration}")
+        stream_writer({"custom_key": "*Documents are relevant to the question, generating answer...*\n"})
         return "generate_answer"
     else:
         logger.info(f"Documents are not relevant to the question, rephrasing question. Iteration: {iteration}")
+        stream_writer({"custom_key": "*Documents are not relevant to the question, rephrasing question...*\n"})
         return "rewrite_question"
 
 
@@ -159,6 +175,8 @@ def rewrite_question(state: GraphState, config: Dict):
     """
 
     logger.info("---Rewrite Question---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Rewriting question...*\n"})
     question = state["question"]
     # documents = state["documents"]
 
@@ -177,13 +195,13 @@ def rewrite_question(state: GraphState, config: Dict):
     # Prompt
     REWRITE_PROMPT = """You are a question re-writer that converts an input question to a better version that is optimized for vectorstore retrieval. Look at the input and try to reason about the underlying semantic intent / meaning. Here is the initial question: \n\n {question} \n\n Formulate an improved question."""
     re_write_prompt = ChatPromptTemplate.from_messages([("human", REWRITE_PROMPT),])
-
     question_rewriter = re_write_prompt | structured_llm_rewriter
-
-    # Re-write question
     better_question = question_rewriter.invoke({"question": question})
+    
     ai_message = AIMessage(content="The retrieved documents are not relevant to the question. Try to rephrase the question to make it more search-friendly.")
+
     logger.info(f"Rewritten question: {better_question.improved_question}")
+    stream_writer({"custom_key": f"*Rewritten question: {better_question.improved_question}*\n"})
     return {"messages": [ai_message], "question": better_question.improved_question}
 
 
@@ -199,6 +217,8 @@ def generate_answer(state: GraphState, config: Dict):
     """
 
     logger.info("---GENERATE ANSWER---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Generating answer...*\n"})
     question = state["question"]
     documents = state["messages"][-1].content
 
@@ -220,5 +240,7 @@ def generate_answer(state: GraphState, config: Dict):
 
     # RAG generation
     answer = rag_chain.invoke({"context": documents, "question": question})
+
     logger.info(f"Generated answer: {answer.content}")
+    stream_writer({"custom_key": f"*{answer.content}*\n"})
     return {"messages": [answer], "generation": answer.content}

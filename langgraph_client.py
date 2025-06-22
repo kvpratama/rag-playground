@@ -35,3 +35,11 @@ def run_agenticrag(urls, question, thread_id):
     if result:
         return result.get("generation", "")
     return ""
+
+def run_agenticrag_stream(urls, question, thread_id):
+    logger.info(f"Running agenticrag with urls: {urls} and question: {question}")
+    input_data = {"urls": urls, "question": question}
+    for event in agenticrag_workflow.stream(input_data, config={"configurable": {"thread_id": thread_id}}, subgraphs=True, stream_mode="custom"):
+        _, data = event  # event[1] → data
+        output = data.get("custom_key", "")
+        yield output
