@@ -1,6 +1,7 @@
 from raptor.graph import workflow as raptor_workflow
 from crag.graph import workflow as crag_workflow
 from selfrag.graph import workflow as selfrag_workflow
+from agenticrag.graph import workflow as agenticrag_workflow
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,15 @@ def run_selfrag(urls, question, thread_id):
     logger.info(f"Running selfrag with urls: {urls} and question: {question}")
     input_data = {"urls": urls, "question": question}
     result = selfrag_workflow.invoke(input_data, config={"configurable": {"thread_id": thread_id}})
+    logger.info(f"Result: {result}")
+    if result:
+        return result.get("generation", "")
+    return ""
+
+def run_agenticrag(urls, question, thread_id):
+    logger.info(f"Running agenticrag with urls: {urls} and question: {question}")
+    input_data = {"urls": urls, "question": question}
+    result = agenticrag_workflow.invoke(input_data, config={"configurable": {"thread_id": thread_id}})
     logger.info(f"Result: {result}")
     if result:
         return result.get("generation", "")
