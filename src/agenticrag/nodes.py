@@ -1,8 +1,7 @@
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import ToolNode
-from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import Dict, Literal
@@ -73,18 +72,20 @@ def generate_query_or_respond(state: GraphState, config: Dict):
     """
     retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
     retriever_tool = get_retriever_tool(retriever)
+    iteration = state.get("iteration", 0)
 
     if len(state["messages"]) == 0:
-        state["messages"].append(SystemMessage(content="You are a helpful assistant. Whenever a user asks a question, you will first try to retrieve relevant information from the vectorstore. If the retrieved information is not relevant to the question, you will try to rephrase the question to make it more search-friendly."))
+        logger.info("Initializing messages with system message")
+        state["messages"].append(SystemMessage(content="You are a helpful assistant. Whenever a user asks a question, you will always try to retrieve relevant information from the vectorstore."))
 
     state["messages"].append(HumanMessage(content=state["question"]))
-    response_model = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    response_model = init_chat_model("gemini-2.0-flash", temperature=0, model_provider="google_genai")
     response = (
         response_model
         # highlight-next-line
         .bind_tools([retriever_tool]).invoke(state["messages"])
     )
-    return {"messages": [response]}
+    return {"messages": [response], "iteration": iteration + 1}
 
 
 def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer", "rewrite_question"]:
@@ -101,6 +102,7 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
     logger.info("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
     question = state["question"]
     documents = state["messages"][-1].content
+    iteration = state.get("iteration", 0)
 
     # Data model
     class GradeDocuments(BaseModel):
@@ -137,9 +139,11 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
     response = retrieval_grader.invoke({"question": question, "context": documents})
     score = response.binary_score
     
-    if score == "yes":
+    if score == "yes" or iteration >= 3:
+        logger.info(f"Documents are relevant to the question, generating answer. Iteration: {iteration}")
         return "generate_answer"
     else:
+        logger.info(f"Documents are not relevant to the question, rephrasing question. Iteration: {iteration}")
         return "rewrite_question"
 
 
@@ -154,7 +158,7 @@ def rewrite_question(state: GraphState, config: Dict):
         state (dict): Updates question key with a re-phrased question
     """
 
-    logger.info("---TRANSFORM QUERY---")
+    logger.info("---Rewrite Question---")
     question = state["question"]
     # documents = state["documents"]
 
@@ -178,7 +182,9 @@ def rewrite_question(state: GraphState, config: Dict):
 
     # Re-write question
     better_question = question_rewriter.invoke({"question": question})
-    return {"question": better_question.improved_question}
+    ai_message = AIMessage(content="The retrieved documents are not relevant to the question. Try to rephrase the question to make it more search-friendly.")
+    logger.info(f"Rewritten question: {better_question.improved_question}")
+    return {"messages": [ai_message], "question": better_question.improved_question}
 
 
 def generate_answer(state: GraphState, config: Dict):
@@ -191,8 +197,8 @@ def generate_answer(state: GraphState, config: Dict):
     Returns:
         state (dict): New key added to state, answer, that contains LLM generation
     """
-    iteration = state.get("iteration", 0)
-    logger.info("---GENERATE---")
+
+    logger.info("---GENERATE ANSWER---")
     question = state["question"]
     documents = state["messages"][-1].content
 
@@ -207,11 +213,12 @@ def generate_answer(state: GraphState, config: Dict):
     generate_prompt = ChatPromptTemplate.from_messages([("human", GENERATE_PROMPT),])
 
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
 
     # Chain
     rag_chain = generate_prompt | llm #| StrOutputParser()
 
     # RAG generation
     answer = rag_chain.invoke({"context": documents, "question": question})
-    return {"messages": [answer], "generation": answer.content, "iteration": iteration + 1}
+    logger.info(f"Generated answer: {answer.content}")
+    return {"messages": [answer], "generation": answer.content}
