@@ -1,5 +1,5 @@
 import streamlit as st
-from langgraph_client import run_selfrag
+from langgraph_client import run_selfrag, run_selfrag_stream
 import uuid
 import logging
 
@@ -54,7 +54,10 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            response = run_selfrag(st.session_state['urls_selfrag'], prompt, st.session_state['thread_id_selfrag'])
-            st.markdown(response)
-        
+            with st.spinner("Assistant is thinking..."), st.empty():
+                response_stream = run_selfrag_stream(st.session_state['urls_selfrag'], prompt, st.session_state['thread_id_selfrag'])
+                response = ""
+                for chunk in response_stream:
+                    st.write(chunk)
+                response = chunk
         st.session_state['chat_history_selfrag'].append({"role": "assistant", "content": response})

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict
 from selfrag.state import GraphState
 from commonlib.vectorstore_utils import build_vectorstore
+from langgraph.config import get_stream_writer
 import logging
 
 
@@ -18,9 +19,12 @@ def init_retriever_node(state: GraphState, config: Dict):
     """
 
     logger.info(f'Initializing retriever node with URL: {state["urls"]}')
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Building vectorstore...*\n"})
     retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
 
     logger.info("Retriever initialized successfully.")
+    stream_writer({"custom_key": "*Retriever initialized successfully.*\n"})
     return {"retriever": retriever}
 
 
@@ -36,11 +40,14 @@ def should_continue(state: GraphState, config: Dict):
     """
 
     logger.info("Checking if should continue with question")
+    stream_writer = get_stream_writer()
     if "question" not in state or state["question"] == "":
         logger.info("Question is empty or not in state, ending workflow.")
+        stream_writer({"custom_key": "*Question is empty or not in state, ending workflow.*\n"})
         return "__end__"
     
     logger.info(f"Question is not empty, continuing workflow with question: {state['question']}")
+    stream_writer({"custom_key": f"*Question is not empty, continuing workflow with question: {state['question']}*\n"})
     return "retrieve"
 
 
@@ -55,15 +62,18 @@ def retrieve(state: GraphState, config: Dict):
         state (dict): New key added to state, documents, that contains retrieved documents
     """
     iteration = state.get("iteration", 0)
+    stream_writer = get_stream_writer()
     logger.info("---RETRIEVE---")
     question = state["question"]
     logger.info(f"Question: {question}")
+    stream_writer({"custom_key": f"*Question: {question}*\n"})
 
     # Retrieval
     logger.info(f"Retrieving documents for thread_id: {config['configurable']['thread_id']}")
     retriever = state["retriever"]
     documents = retriever.invoke(question)
     logger.info(f"Retrieved documents: {len(documents)}")
+    stream_writer({"custom_key": f"*Retrieved documents: {len(documents)}*\n"})
     return {"documents": documents, "iteration": iteration + 1}
 
 
@@ -79,6 +89,8 @@ def grade_documents(state: GraphState, config: Dict):
     """
 
     logger.info("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Checking document relevance to question...*\n"})
     question = state["question"]
     documents = state["documents"]
 
@@ -118,9 +130,11 @@ def grade_documents(state: GraphState, config: Dict):
         grade = score.binary_score
         if grade == "yes":
             logger.info("---GRADE: DOCUMENT RELEVANT---")
+            stream_writer({"custom_key": "*Document is relevant to question.*\n"})
             filtered_docs.append(d)
         else:
             logger.info("---GRADE: DOCUMENT NOT RELEVANT---")
+            stream_writer({"custom_key": "*Document is not relevant to question.*\n"})
             continue
     return {"documents": filtered_docs}
 
@@ -137,10 +151,13 @@ def decide_to_generate(state: GraphState, config: Dict):
     """
 
     logger.info("---ASSESS GRADED DOCUMENTS---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Assessing graded documents...*\n"})
     
-    if state["iteration"] >= 5:
+    if state["iteration"] >= 3:
         logger.info("---DECISION: MAX ITERATIONS REACHED, END---")
-        return "__end__"
+        stream_writer({"custom_key": "*Max iterations reached, ending workflow.*\n"})
+        return "generate"
     
     elif len(state["documents"]) == 0:
         # All documents have been filtered check_relevance
@@ -148,11 +165,13 @@ def decide_to_generate(state: GraphState, config: Dict):
         logger.info(
             "---DECISION: ALL DOCUMENTS ARE NOT RELEVANT TO QUESTION, TRANSFORM QUERY---"
         )
+        stream_writer({"custom_key": "*All documents are not relevant to question, transforming query.*\n"})
         return "transform_query"
 
     else:
         # We have relevant documents, so generate answer
         logger.info("---DECISION: GENERATE---")
+        stream_writer({"custom_key": "*We have relevant documents, generating answer.*\n"})
         return "generate"
 
 
@@ -168,6 +187,8 @@ def transform_query(state: GraphState, config: Dict):
     """
 
     logger.info("---TRANSFORM QUERY---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Transforming query...*\n"})
     question = state["question"]
     # documents = state["documents"]
 
@@ -199,6 +220,8 @@ def transform_query(state: GraphState, config: Dict):
 
     # Re-write question
     better_question = question_rewriter.invoke({"question": question})
+    logger.info(f"Improved question: {better_question.improved_question}")
+    stream_writer({"custom_key": f"*Improved question: {better_question.improved_question}*\n"})
     return {"question": better_question.improved_question}
 
 
@@ -214,6 +237,8 @@ def generate(state: GraphState, config: Dict):
     """
     iteration = state.get("iteration", 0)
     logger.info("---GENERATE---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Generating answer...*\n"})
     question = state["question"]
     documents = state["documents"]
 
@@ -228,6 +253,8 @@ def generate(state: GraphState, config: Dict):
 
     # RAG generation
     answer = rag_chain.invoke({"context": documents, "question": question})
+    logger.info(f"Answer: {answer}")
+    stream_writer({"custom_key": f"*{answer}*"})
     return {"generation": answer, "iteration": iteration + 1}
 
 
@@ -239,7 +266,10 @@ def hallucination_grader(documents, generation):
             description="Answer is grounded in the facts, 'yes' or 'no'"
         )
 
-
+    logger.info("---HALLUCINATION GRADER---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Checking for hallucination...*\n"})
+    
     # LLM with function call
     llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
     structured_llm_grader = llm.with_structured_output(GradeHallucinations)
@@ -260,6 +290,8 @@ def hallucination_grader(documents, generation):
         {"documents": documents, "generation": generation}
     )
     grade = score.binary_score
+    logger.info(f"Is generation grounded in facts: {grade}")
+    stream_writer({"custom_key": f"*Is generation grounded in facts: {grade}*\n"})
     return grade
 
 
@@ -272,6 +304,9 @@ def answer_grader(question, generation):
             description="Answer addresses the question, 'yes' or 'no'"
         )
 
+    logger.info("---ANSWER GRADER---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Checking if answer addresses question...*\n"})
 
     # LLM with function call
     llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
@@ -289,6 +324,8 @@ def answer_grader(question, generation):
 
     answer_grader_chain = answer_prompt | structured_llm_grader
     answer_grade = answer_grader_chain.invoke({"question": question, "generation": generation})
+    logger.info(f"Is answer addresses question: {answer_grade.binary_score}")
+    stream_writer({"custom_key": f"*Is answer addresses question: {answer_grade.binary_score}*\n"})
     return answer_grade.binary_score
 
 
@@ -302,10 +339,15 @@ def grade_generation_v_documents_and_question(state):
     Returns:
         str: Decision for next node to call
     """
+    logger.info("---GRADE GENERATION vs DOCUMENTS AND QUESTION---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Checking if generation is grounded in documents and addresses question...*\n"})
     iteration = state.get("iteration", 0)
-    if iteration >= 5:
+    if iteration >= 3:
         logger.info("Iteration limit reached, ending workflow.")
-        return "__end__"
+        stream_writer({"custom_key": "*Iteration limit reached, ending workflow.*\n"})
+        stream_writer({"custom_key": f"*{state['generation']}*"})
+        return "useful"
     
     question = state["question"]
     documents = state["documents"]
@@ -316,15 +358,20 @@ def grade_generation_v_documents_and_question(state):
 
     if hallucination_grade == "yes":
         logger.info("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")
+        stream_writer({"custom_key": "*Generation is grounded in documents.*\n"})
         # Check question-answering
         logger.info("---GRADE GENERATION vs QUESTION---")
         answer_grade = answer_grader(question, generation)
         if answer_grade == "yes":
             logger.info("---DECISION: GENERATION ADDRESSES QUESTION---")
+            stream_writer({"custom_key": "*Generation addresses question.*\n"})
+            stream_writer({"custom_key": f"*{generation}*"})
             return "useful"
         else:
             logger.info("---DECISION: GENERATION DOES NOT ADDRESS QUESTION---")
+            stream_writer({"custom_key": "*Generation does not address question.*\n"})
             return "not useful"
     else:
         logger.info("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRY---")
+        stream_writer({"custom_key": "*Generation is not grounded in documents, re-try.*\n"})
         return "not supported"

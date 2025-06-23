@@ -33,7 +33,7 @@ builder.add_conditional_edges(
     {
         "transform_query": "transform_query",
         "generate": "generate",
-        "__end__": END,
+        # "__end__": END,
     },
 )
 builder.add_edge("transform_query", "retrieve")
