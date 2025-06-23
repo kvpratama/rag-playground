@@ -4,7 +4,8 @@
       "agenticrag_graph": "./src/agenticrag/graph.py:workflow",
       "raptor_graph": "./src/raptor/graph.py:workflow",
       "crag_graph": "./src/crag/graph.py:workflow",
-      "selfrag_graph": "./src/selfrag/graph.py:workflow"
+      "selfrag_graph": "./src/selfrag/graph.py:workflow",
+      "adaptiverag_graph": "./src/adaptiverag/graph.py:workflow"
     },
     "env": "./.env",
     "python_version": "3.13",
