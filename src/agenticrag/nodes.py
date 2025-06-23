@@ -25,11 +25,11 @@ def init_retriever_node(state: GraphState, config: Dict):
     stream_writer = get_stream_writer()
     stream_writer({"custom_key": "*Building vectorstore...*\n"})
 
-    _ = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
+    retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
 
     logger.info("Retriever initialized successfully.")
     stream_writer({"custom_key": "*Retriever initialized successfully.*\n"})
-    return {}
+    return {"retriever": retriever}
 
 
 def should_continue(state: GraphState, config: Dict):
@@ -67,7 +67,7 @@ def get_retriever_tool(retriever):
 
 
 def get_tool_node(state: GraphState, config: Dict):
-    retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
+    retriever = state["retriever"]
     return ToolNode([get_retriever_tool(retriever)])
 
 
@@ -75,7 +75,7 @@ def generate_query_or_respond(state: GraphState, config: Dict):
     """Call the model to generate a response based on the current state. Given
     the question, it will decide to retrieve using the retriever tool, or simply respond to the user.
     """
-    retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
+    retriever = state["retriever"]
     retriever_tool = get_retriever_tool(retriever)
     iteration = state.get("iteration", 0)
     stream_writer = get_stream_writer()
