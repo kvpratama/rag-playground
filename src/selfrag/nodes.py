@@ -136,7 +136,7 @@ def grade_documents(state: GraphState, config: Dict):
             logger.info("---GRADE: DOCUMENT NOT RELEVANT---")
             stream_writer({"custom_key": "*Document is not relevant to question.*\n"})
             continue
-    return {"documents": filtered_docs}
+    return {"relevant_documents": filtered_docs}
 
 
 def decide_to_generate(state: GraphState, config: Dict):
@@ -153,19 +153,21 @@ def decide_to_generate(state: GraphState, config: Dict):
     logger.info("---ASSESS GRADED DOCUMENTS---")
     stream_writer = get_stream_writer()
     stream_writer({"custom_key": "*Assessing graded documents...*\n"})
+    min_relevant_documents = state.get("min_relevant_documents", 3)
+    max_iterations = state.get("max_iterations", 5)
     
-    if state["iteration"] >= 3:
+    if state["iteration"] > max_iterations:
         logger.info("---DECISION: MAX ITERATIONS REACHED, END---")
         stream_writer({"custom_key": "*Max iterations reached, ending workflow.*\n"})
         return "generate"
     
-    elif len(state["documents"]) == 0:
+    elif len(state["relevant_documents"]) < min_relevant_documents:
         # All documents have been filtered check_relevance
         # We will re-generate a new query
         logger.info(
-            "---DECISION: ALL DOCUMENTS ARE NOT RELEVANT TO QUESTION, TRANSFORM QUERY---"
+            f"---DECISION: RELEVANT DOCUMENTS COUNT < {min_relevant_documents}, TRANSFORM QUERY---"
         )
-        stream_writer({"custom_key": "*All documents are not relevant to question, transforming query.*\n"})
+        stream_writer({"custom_key": f"*Relevant documents count < {min_relevant_documents}, transforming query.*\n"})
         return "transform_query"
 
     else:
@@ -240,7 +242,7 @@ def generate(state: GraphState, config: Dict):
     stream_writer = get_stream_writer()
     stream_writer({"custom_key": "*Generating answer...*\n"})
     question = state["question"]
-    documents = state["documents"]
+    documents = state["relevant_documents"]
 
     # Prompt
     prompt = hub.pull("rlm/rag-prompt")
@@ -329,7 +331,7 @@ def answer_grader(question, generation):
     return answer_grade.binary_score
 
 
-def grade_generation_v_documents_and_question(state):
+def grade_generation_v_documents_and_question(state: GraphState, config: Dict):
     """
     Determines whether the generation is grounded in the document and answers question.
 
@@ -343,14 +345,16 @@ def grade_generation_v_documents_and_question(state):
     stream_writer = get_stream_writer()
     stream_writer({"custom_key": "*Checking if generation is grounded in documents and addresses question...*\n"})
     iteration = state.get("iteration", 0)
-    if iteration >= 3:
+    max_iterations = state.get("max_iterations", 5)
+
+    if iteration > max_iterations:
         logger.info("Iteration limit reached, ending workflow.")
         stream_writer({"custom_key": "*Iteration limit reached, ending workflow.*\n"})
         stream_writer({"custom_key": f"*{state['generation']}*"})
         return "useful"
     
     question = state["question"]
-    documents = state["documents"]
+    documents = state["relevant_documents"]
     generation = state["generation"]
 
     logger.info("---CHECK HALLUCINATIONS---")

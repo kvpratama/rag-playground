@@ -9,7 +9,10 @@ class GraphState(MessagesState):
     generation: str
     urls: List[str]
     documents: List[str]
+    relevant_documents: Annotated[List[str], add]
+    min_relevant_documents: int
     iteration: int
+    max_iterations: int
     retriever: Optional[BaseRetriever]
 
 class GraphStateInput(MessagesState):
