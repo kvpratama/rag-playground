@@ -7,6 +7,7 @@ from typing import List, Dict
 from crag.state import GraphState
 from commonlib.vectorstore_utils import build_vectorstore
 from langchain_tavily import TavilySearch
+from langchain.schema import Document
 from langgraph.config import get_stream_writer
 import logging
 
