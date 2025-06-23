@@ -9,10 +9,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Create embeddings instance once (singleton pattern)
+_embeddings = None
+
+def get_embeddings():
+    global _embeddings
+    if _embeddings is None:
+        _embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    return _embeddings
 
 def build_vectorstore(thread_id: str, urls: List[str]):
     persist_directory = f"./chroma_db"
-    embd = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    embd = get_embeddings()  # Reuse embeddings instance
     collection_name = f"{thread_id}"
 
     # Check if collection exists using ChromaDB client
