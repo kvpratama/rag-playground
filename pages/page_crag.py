@@ -1,5 +1,5 @@
 import streamlit as st
-from langgraph_client import run_crag
+from langgraph_client import run_crag, run_crag_stream
 import uuid
 import logging
 
@@ -54,7 +54,10 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            response = run_crag(st.session_state['urls_crag'], prompt, st.session_state['thread_id_crag'])
-            st.markdown(response)
-        
+            with st.spinner("Assistant is thinking..."), st.empty():
+                response_stream = run_crag_stream(st.session_state['urls_crag'], prompt, st.session_state['thread_id_crag'])
+                response = ""
+                for chunk in response_stream:
+                    st.write(chunk)
+                response = chunk
         st.session_state['chat_history_crag'].append({"role": "assistant", "content": response})

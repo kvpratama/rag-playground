@@ -18,6 +18,14 @@ def run_crag(urls, question, thread_id):
         return result.get("answer", "")
     return ""
 
+def run_crag_stream(urls, question, thread_id):
+    logger.info(f"Running crag with urls: {urls} and question: {question}")
+    input_data = {"urls": urls, "question": question}
+    for event in crag_workflow.stream(input_data, config={"configurable": {"thread_id": thread_id}}, subgraphs=True, stream_mode="custom"):
+        _, data = event  # event[1] → data
+        output = data.get("custom_key", "")
+        yield output
+
 def run_selfrag(urls, question, thread_id):
     logger.info(f"Running selfrag with urls: {urls} and question: {question}")
     input_data = {"urls": urls, "question": question}

@@ -7,6 +7,7 @@ from typing import List, Dict
 from crag.state import GraphState
 from commonlib.vectorstore_utils import build_vectorstore
 from langchain_tavily import TavilySearch
+from langgraph.config import get_stream_writer
 import logging
 
 
@@ -19,9 +20,12 @@ def init_retriever_node(state: GraphState, config: Dict):
     """
 
     logger.info(f'Initializing retriever node with URL: {state["urls"]}')
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Building vectorstore...*\n"})
     retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
 
     logger.info("Retriever initialized successfully.")
+    stream_writer({"custom_key": "*Retriever initialized successfully.*\n"})
     return {"retriever": retriever}
 
 
@@ -37,11 +41,14 @@ def should_continue(state: GraphState, config: Dict):
     """
 
     logger.info(f"Checking if should continue with question: {state['question']}")
+    stream_writer = get_stream_writer()
     if "question" not in state or state["question"] == "":
         logger.info("Question is empty or not in state, ending workflow.")
+        stream_writer({"custom_key": "*Question is empty or not in state, ending workflow.*\n"})
         return "__end__"
 
     logger.info("Question is not empty, continuing workflow.")
+    stream_writer({"custom_key": "*Question is not empty, continuing workflow.*\n"})
     return "retrieve"
 
 
@@ -56,14 +63,17 @@ def retrieve(state: GraphState, config: Dict):
         state (dict): New key added to state, documents, that contains retrieved documents
     """
     logger.info("---RETRIEVE---")
+    stream_writer = get_stream_writer()
     question = state["question"]
     logger.info(f"Question: {question}")
+    stream_writer({"custom_key": f"*Question: {question}*\n"})
 
     # Retrieval
     logger.info(f"Retrieving documents for thread_id: {config['configurable']['thread_id']}")
     retriever = state["retriever"]
     documents = retriever.invoke(question)
     logger.info(f"Retrieved documents: {len(documents)}")
+    stream_writer({"custom_key": f"*Retrieved documents: {len(documents)}*\n"})
     return {"documents": documents}
 
 
@@ -79,6 +89,8 @@ def grade_documents(state: GraphState, config: Dict):
     """
 
     logger.info("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Checking document relevance to question...*\n"})
     question = state["question"]
     documents = state["documents"]
 
@@ -118,9 +130,11 @@ def grade_documents(state: GraphState, config: Dict):
         grade = score.binary_score
         if grade == "yes":
             logger.info("---GRADE: DOCUMENT RELEVANT---")
+            stream_writer({"custom_key": "*Document is relevant to question.*\n"})
             filtered_docs.append(d)
         else:
             logger.info("---GRADE: DOCUMENT NOT RELEVANT---")
+            stream_writer({"custom_key": "*Document is not relevant to question.*\n"})
             continue
     return {"documents": filtered_docs}
 
@@ -137,6 +151,8 @@ def decide_to_generate(state: GraphState, config: Dict):
     """
 
     logger.info("---ASSESS GRADED DOCUMENTS---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Assessing graded documents...*\n"})
 
     if len(state["documents"]) == 0:
         # All documents have been filtered check_relevance
@@ -144,11 +160,13 @@ def decide_to_generate(state: GraphState, config: Dict):
         logger.info(
             "---DECISION: ALL DOCUMENTS ARE NOT RELEVANT TO QUESTION, TRANSFORM QUERY---"
         )
+        stream_writer({"custom_key": "*All documents are not relevant to question, transforming query...*\n"})
         return "transform_query"
 
     else:
         # We have relevant documents, so generate answer
         logger.info("---DECISION: GENERATE---")
+        stream_writer({"custom_key": "*We have relevant documents, generating answer...*\n"})
         return "generate"
 
 
@@ -164,6 +182,8 @@ def transform_query(state: GraphState, config: Dict):
     """
 
     logger.info("---TRANSFORM QUERY---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Transforming query...*\n"})
     question = state["question"]
     # documents = state["documents"]
 
@@ -195,6 +215,8 @@ def transform_query(state: GraphState, config: Dict):
 
     # Re-write question
     better_question = question_rewriter.invoke({"question": question})
+    logger.info(f"Improved question: {better_question.improved_question}")
+    stream_writer({"custom_key": f"*Improved question: {better_question.improved_question}*\n"})
     return {"question": better_question.improved_question}
 
 
@@ -210,6 +232,8 @@ def web_search(state: GraphState, config: Dict):
     """
 
     logger.info("---WEB SEARCH---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Web search...*\n"})
     question = state["question"]
     documents = state["documents"]
 
@@ -231,6 +255,8 @@ def web_search(state: GraphState, config: Dict):
             documents.append(web_document)
     else:
         logger.info("No search results found")
+        stream_writer({"custom_key": "*No search results found.*\n"})
+    stream_writer({"custom_key": f"*Documents: {len(documents)}*\n"})
     return {"documents": documents, "question": question}
 
 
@@ -245,6 +271,8 @@ def generate(state: GraphState, config: Dict):
         state (dict): New key added to state, answer, that contains LLM generation
     """
     logger.info("---GENERATE---")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Generating answer...*\n"})
     question = state["question"]
     documents = state["documents"]
 
@@ -259,4 +287,6 @@ def generate(state: GraphState, config: Dict):
 
     # RAG generation
     answer = rag_chain.invoke({"context": documents, "question": question})
+    logger.info(f"Generated answer: {answer}")
+    stream_writer({"custom_key": f"*{answer}*\n"})
     return {"answer": answer}
