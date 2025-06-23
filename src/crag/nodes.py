@@ -19,10 +19,10 @@ def init_retriever_node(state: GraphState, config: Dict):
     """
 
     logger.info(f'Initializing retriever node with URL: {state["urls"]}')
-    _ = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
+    retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
 
     logger.info("Retriever initialized successfully.")
-    return {}
+    return {"retriever": retriever}
 
 
 def should_continue(state: GraphState, config: Dict):
@@ -61,7 +61,7 @@ def retrieve(state: GraphState, config: Dict):
 
     # Retrieval
     logger.info(f"Retrieving documents for thread_id: {config['configurable']['thread_id']}")
-    retriever = build_vectorstore(config["configurable"]["thread_id"], state["urls"])
+    retriever = state["retriever"]
     documents = retriever.invoke(question)
     logger.info(f"Retrieved documents: {len(documents)}")
     return {"documents": documents}

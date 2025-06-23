@@ -1,7 +1,7 @@
-from typing import List, Annotated
+from typing import List, Annotated, Optional
 from langgraph.graph import MessagesState
 from operator import add
-
+from langchain.schema import BaseRetriever
 
 class GraphState(MessagesState):
     question: str
@@ -9,6 +9,7 @@ class GraphState(MessagesState):
     urls: List[str]
     documents: List[str]
     relevant_docs: Annotated[List[str], add]
+    retriever: Optional[BaseRetriever]
 
 class GraphStateInput(MessagesState):
     question: str
