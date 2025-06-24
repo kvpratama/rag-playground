@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Literal
 from selfrag.state import GraphState
 from commonlib.vectorstore_utils import build_vectorstore
 from langgraph.config import get_stream_writer
@@ -139,7 +139,7 @@ def grade_documents(state: GraphState, config: Dict):
     return {"relevant_documents": filtered_docs}
 
 
-def decide_to_generate(state: GraphState, config: Dict):
+def decide_to_generate(state: GraphState, config: Dict) -> Literal["transform_query", "generate"]:
     """
     Determines whether to generate an answer, or re-generate a question.
 
@@ -348,8 +348,8 @@ def grade_generation_v_documents_and_question(state: GraphState, config: Dict):
     max_iterations = state.get("max_iterations", 5)
 
     if iteration > max_iterations:
-        logger.info("Iteration limit reached, ending workflow.")
-        stream_writer({"custom_key": "*Iteration limit reached, ending workflow.*\n"})
+        logger.info(f"Iteration limit: {iteration} reached, ending workflow.")
+        stream_writer({"custom_key": f"*Iteration limit: {iteration} reached, ending workflow.*\n"})
         stream_writer({"custom_key": f"*{state['generation']}*"})
         return "useful"
     
