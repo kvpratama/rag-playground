@@ -6,11 +6,18 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-st.title("RAG Playground")
+st.title("RAPTOR")
 
 st.markdown("""
-Raptor
+Implements Recursive Abstractive Processing for Tree-Organized Retrieval (RAPTOR), providing advanced document processing and hierarchical information retrieval.
 """)
+st.markdown("""
+**Key Features**:
+- Hierarchical document clustering
+- Multi-level summarization
+- Efficient retrieval from large document collections
+""")
+st.image("imgs/raptor.png", caption="RAPTOR Workflow")
 
 if 'thread_id_raptor' not in st.session_state:
     with st.form("rag_form"):
