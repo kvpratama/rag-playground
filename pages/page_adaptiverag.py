@@ -12,6 +12,14 @@ st.markdown("""
 Adaptive RAG is a retrieval-augmented generation approach that dynamically selects between no retrieval, single-shot RAG, or iterative RAG based on query analysis to optimize response quality.
 """)
 
+st.markdown("""
+**Key Features**:
+- Automatic query complexity assessment
+- Dynamic routing between generation strategies
+- Optimized performance for different query types
+""")
+st.image("imgs/adaptiverag.png", caption="Adaptive-RAG Workflow")
+
 if 'thread_id_adaptiverag' not in st.session_state:
     with st.form("adaptiverag_form"):
         url1 = st.text_input("Enter URL to index:", value="https://lilianweng.github.io/posts/2023-06-23-agent/")
