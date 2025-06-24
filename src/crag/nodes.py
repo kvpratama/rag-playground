@@ -1,7 +1,7 @@
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from langchain import hub
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Dict
 from crag.state import GraphState
@@ -105,30 +105,30 @@ def grade_documents(state: GraphState, config: Dict):
 
 
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
-    structured_llm_grader = llm.with_structured_output(GradeDocuments)
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+    parser = JsonOutputParser(pydantic_object=GradeDocuments)
 
     # Prompt
     system = """You are a grader assessing relevance of a retrieved document to a user question. \n 
         If the document contains keyword(s) or semantic meaning related to the question, grade it as relevant. \n
-        Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."""
+        Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question.\n
+        {format_instructions}"""
     grade_prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", system),
+            ("human", system),
             ("human", "Retrieved document: \n\n {document} \n\n User question: {question}"),
         ]
     )
-
-    retrieval_grader = grade_prompt | structured_llm_grader
+    retrieval_grader = grade_prompt | llm | parser
 
     # Score each doc
     filtered_docs = []
     
     for d in documents:
         score = retrieval_grader.invoke(
-            {"question": question, "document": d.page_content}
+            {"question": question, "document": d.page_content, "format_instructions": parser.get_format_instructions()}
         )
-        grade = score.binary_score
+        grade = score["binary_score"]
         if grade == "yes":
             logger.info("---GRADE: DOCUMENT RELEVANT---")
             stream_writer({"custom_key": "*Document is relevant to question.*\n"})
@@ -197,7 +197,7 @@ def transform_query(state: GraphState, config: Dict):
             description="The final improved question that is optimized for web search and ready to be use as a search query.")
     
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
     structured_llm_rewriter = llm.with_structured_output(RewriteQuestion)
 
     # Prompt
@@ -281,7 +281,7 @@ def generate(state: GraphState, config: Dict):
     prompt = hub.pull("rlm/rag-prompt")
 
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
 
     # Chain
     rag_chain = prompt | llm | StrOutputParser()
