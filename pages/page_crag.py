@@ -11,6 +11,13 @@ st.title("Corrective RAG (CRAG)")
 st.markdown("""
 Corrective-RAG (CRAG) is a Retrieval-Augmented Generation (RAG) approach that integrates self-evaluation or self-assessment of retrieved documents.
 """)
+st.markdown("""
+**Key Features**:
+- Web search fallback for unknown queries
+- Automatic correction of retrieved information
+- Dynamic query transformation
+""")
+st.image("imgs/crag.png", caption="CRAG Workflow")
 
 if 'thread_id_crag' not in st.session_state:
     with st.form("crag_form"):
