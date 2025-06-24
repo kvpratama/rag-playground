@@ -69,6 +69,33 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 
 ![Adaptive RAG Workflow](./imgs/adaptiverag.png)
 
+## Streamlit Frontend
+
+This project includes an intuitive Streamlit-based frontend to streamline experimentation and enhance usability. 
+
+## Installation
+
+```bash
+# Install uv if you haven't already
+pip install uv
+
+# Create a virtual environment
+uv venv
+
+# Install the package with development dependencies
+uv sync --extra dev
+
+# Activate the virtual environment
+source .venv/bin/activate
+
+# Run the Streamlit app
+streamlit run app.py
+```
+
+## Acknowledgments
+
+This project is heavily influenced by excelent RAG tutorials from [LangGraph](https://github.com/langchain-ai/langgraph/tree/main/docs/docs/tutorials/rag)
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
