@@ -7,7 +7,8 @@ page_crag = st.Page("./pages/page_crag.py", title="CRAG", icon=":material/add_ci
 page_raptor = st.Page("./pages/page_raptor.py", title="RAPTOR", icon=":material/delete:")
 page_selfrag = st.Page("./pages/page_selfrag.py", title="Selfrag", icon=":material/refresh:")
 page_agenticrag = st.Page("./pages/page_agenticrag.py", title="Agentic-RAG", icon=":material/robot_2:")
+page_adaptiverag = st.Page("./pages/page_adaptiverag.py", title="Adaptive-RAG", icon=":material/tactic:")
 
-pg = st.navigation([page_home, page_crag, page_raptor, page_selfrag, page_agenticrag])
+pg = st.navigation([page_home, page_crag, page_raptor, page_selfrag, page_agenticrag, page_adaptiverag])
 
 pg.run()
