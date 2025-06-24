@@ -1,6 +1,6 @@
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
-from langchain import hub
+# from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Dict, Literal
@@ -78,7 +78,7 @@ def question_grader(state: GraphState, config: Dict):
         )
 
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
     structured_llm_router = llm.with_structured_output(GradeQuery)
 
     # Prompt
@@ -113,7 +113,7 @@ def adaptive_routing_node(state: GraphState, config: Dict):
     
     logger.info("Question grade is not 0, continuing workflow.")
     stream_writer({"custom_key": "*Question grade is not 0, continuing workflow.*\n"})
-    return "subgraph"
+    return "selfrag_workflow"
     
 
 def direct_generation(state: GraphState, config: Dict):
@@ -138,5 +138,5 @@ def direct_generation(state: GraphState, config: Dict):
     generation_chain = generation_prompt | llm | StrOutputParser()
     generation = generation_chain.invoke({"question": state["question"]})
     logger.info(f"Generated answer: {generation}")
-    stream_writer({"custom_key": f"*{generation}*\n"})
+    stream_writer({"custom_key": f"{generation}\n"})
     return {"generation": generation}
