@@ -13,7 +13,7 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Multi-level summarization
 - Efficient retrieval from large document collections
 
-[RAPTOR paper]([https://arxiv.org/abs/2401.18059)
+[RAPTOR paper](https://arxiv.org/abs/2401.18059)
 
 ![RAPTOR Workflow](./imgs/raptor.png)
 
