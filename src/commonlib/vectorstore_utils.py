@@ -3,7 +3,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 import chromadb
 from typing import List
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 import logging
 
 
@@ -15,7 +17,8 @@ _embeddings = None
 def get_embeddings():
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        # _embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        _embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
     return _embeddings
 
 def build_vectorstore(thread_id: str, urls: List[str]):
