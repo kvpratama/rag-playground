@@ -13,6 +13,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Multi-level summarization
 - Efficient retrieval from large document collections
 
+[RAPTOR paper]([https://arxiv.org/abs/2401.18059)
+
 ![RAPTOR Workflow](./imgs/raptor.png)
 
 ### 2. Corrective RAG (CRAG)
@@ -23,6 +25,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Web search fallback for unknown queries
 - Automatic correction of retrieved information
 - Dynamic query transformation
+
+[CRAG paper](https://arxiv.org/abs/2401.15884)
 
 ![CRAG Workflow](./imgs/crag.png)
 
@@ -35,6 +39,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Iterative response refinement
 - Quality control for generated outputs
 
+[Self-RAG paper](https://arxiv.org/abs/2310.11511)
+
 ![Self-RAG Workflow](./imgs/selfrag.png)
 
 ### 4. Agentic RAG
@@ -46,6 +52,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Dynamic tool usage
 - Flexible response generation
 
+[Agentic RAG](https://github.com/langchain-ai/langgraph/blob/main/docs/docs/tutorials/rag/langgraph_agentic_rag.ipynb)
+
 ![Agentic RAG Workflow](./imgs/agenticrag.png)
 
 ### 5. Adaptive RAG
@@ -56,6 +64,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Automatic query complexity assessment
 - Dynamic routing between generation strategies
 - Optimized performance for different query types
+
+[Adaptive RAG paper](https://arxiv.org/abs/2403.14403)
 
 ![Adaptive RAG Workflow](./imgs/adaptiverag.png)
 
