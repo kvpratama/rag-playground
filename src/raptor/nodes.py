@@ -42,7 +42,7 @@ def rag_node(state: GraphState, config: Dict):
     rag_chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | hub.pull("rlm/rag-prompt")
-        | init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+        | init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
         | StrOutputParser()
     )
 
