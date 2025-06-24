@@ -8,9 +8,14 @@ logger = logging.getLogger(__name__)
 
 st.title("Agentic-RAG")
 
+st.markdown("""Agentic RAG is an advanced approach that combines the power of AI agents with traditional RAG pipelines.""")
 st.markdown("""
-Agentic RAG is an advanced approach that combines the power of AI agents with traditional RAG pipelines.
+**Key Features**:
+- Autonomous decision-making for retrieval
+- Dynamic tool usage
+- Flexible response generation
 """)
+st.image("imgs/agenticrag.png", caption="Agentic-RAG Workflow")
 
 if 'thread_id_agenticrag' not in st.session_state:
     with st.form("agenticrag_form"):
