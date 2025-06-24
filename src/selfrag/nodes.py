@@ -1,7 +1,7 @@
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from langchain import hub
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser,JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Dict, Literal
 from selfrag.state import GraphState
@@ -104,30 +104,34 @@ def grade_documents(state: GraphState, config: Dict):
 
 
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
-    structured_llm_grader = llm.with_structured_output(GradeDocuments)
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+    # structured_llm_grader = llm.with_structured_output(GradeDocuments)
+    # Create the JSON output parser
+    parser = JsonOutputParser(pydantic_object=GradeDocuments)
 
     # Prompt
     system = """You are a grader assessing relevance of a retrieved document to a user question. \n 
         If the document contains keyword(s) or semantic meaning related to the question, grade it as relevant. \n
-        Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."""
+        Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question.\n
+        {format_instructions}"""
     grade_prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", system),
+            ("human", system),
             ("human", "Retrieved document: \n\n {document} \n\n User question: {question}"),
         ]
     )
+    # grade_prompt = grade_prompt.partial(format_instructions=parser.get_format_instructions())
 
-    retrieval_grader = grade_prompt | structured_llm_grader
+    retrieval_grader = grade_prompt | llm | parser
 
     # Score each doc
     filtered_docs = []
     
     for d in documents:
         score = retrieval_grader.invoke(
-            {"question": question, "document": d.page_content}
+            {"question": question, "document": d.page_content, "format_instructions": parser.get_format_instructions()}
         )
-        grade = score.binary_score
+        grade = score["binary_score"]
         if grade == "yes":
             logger.info("---GRADE: DOCUMENT RELEVANT---")
             stream_writer({"custom_key": "*Document is relevant to question.*\n"})
@@ -203,7 +207,7 @@ def transform_query(state: GraphState, config: Dict):
             description="The final improved question that is optimized for vectorstore retrieval and ready to be use as a search query.")
     
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
     structured_llm_rewriter = llm.with_structured_output(RewriteQuestion)
 
     # Prompt
@@ -237,7 +241,6 @@ def generate(state: GraphState, config: Dict):
     Returns:
         state (dict): New key added to state, answer, that contains LLM generation
     """
-    iteration = state.get("iteration", 0)
     logger.info("---GENERATE---")
     stream_writer = get_stream_writer()
     stream_writer({"custom_key": "*Generating answer...*\n"})
@@ -248,7 +251,7 @@ def generate(state: GraphState, config: Dict):
     prompt = hub.pull("rlm/rag-prompt")
 
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
 
     # Chain
     rag_chain = prompt | llm | StrOutputParser()
@@ -257,7 +260,7 @@ def generate(state: GraphState, config: Dict):
     answer = rag_chain.invoke({"context": documents, "question": question})
     logger.info(f"Answer: {answer}")
     stream_writer({"custom_key": f"*{answer}*"})
-    return {"generation": answer, "iteration": iteration + 1}
+    return {"generation": answer}
 
 
 def hallucination_grader(documents, generation):
@@ -273,25 +276,26 @@ def hallucination_grader(documents, generation):
     stream_writer({"custom_key": "*Checking for hallucination...*\n"})
     
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
-    structured_llm_grader = llm.with_structured_output(GradeHallucinations)
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+    parser = JsonOutputParser(pydantic_object=GradeHallucinations)
 
     # Prompt
     system = """You are a grader assessing whether an LLM generation is grounded in / supported by a set of retrieved facts. \n 
-        Give a binary score 'yes' or 'no'. 'Yes' means that the answer is grounded in / supported by the set of facts."""
+        Give a binary score 'yes' or 'no'. 'Yes' means that the answer is grounded in / supported by the set of facts.\n
+        {format_instructions}"""
     hallucination_prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", system),
+            ("human", system),
             ("human", "Set of facts: \n\n {documents} \n\n LLM generation: {generation}"),
         ]
     )
 
-    hallucination_grader_chain = hallucination_prompt | structured_llm_grader
+    hallucination_grader_chain = hallucination_prompt | llm | parser
 
     score = hallucination_grader_chain.invoke(
-        {"documents": documents, "generation": generation}
+        {"documents": documents, "generation": generation, "format_instructions": parser.get_format_instructions()}
     )
-    grade = score.binary_score
+    grade = score["binary_score"]
     logger.info(f"Is generation grounded in facts: {grade}")
     stream_writer({"custom_key": f"*Is generation grounded in facts: {grade}*\n"})
     return grade
@@ -311,24 +315,25 @@ def answer_grader(question, generation):
     stream_writer({"custom_key": "*Checking if answer addresses question...*\n"})
 
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
-    structured_llm_grader = llm.with_structured_output(GradeAnswer)
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+    parser = JsonOutputParser(pydantic_object=GradeAnswer)
 
     # Prompt
     system = """You are a grader assessing whether an answer addresses / resolves a question \n 
-        Give a binary score 'yes' or 'no'. Yes' means that the answer resolves the question."""
+        Give a binary score 'yes' or 'no'. Yes' means that the answer resolves the question.\n
+        {format_instructions}"""
     answer_prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", system),
+            ("human", system),
             ("human", "User question: \n\n {question} \n\n LLM generation: {generation}"),
         ]
     )
 
-    answer_grader_chain = answer_prompt | structured_llm_grader
-    answer_grade = answer_grader_chain.invoke({"question": question, "generation": generation})
-    logger.info(f"Is answer addresses question: {answer_grade.binary_score}")
-    stream_writer({"custom_key": f"*Is answer addresses question: {answer_grade.binary_score}*\n"})
-    return answer_grade.binary_score
+    answer_grader_chain = answer_prompt | llm | parser
+    answer_grade = answer_grader_chain.invoke({"question": question, "generation": generation, "format_instructions": parser.get_format_instructions()})
+    logger.info(f"Is answer addresses question: {answer_grade["binary_score"]}")
+    stream_writer({"custom_key": f"*Is answer addresses question: {answer_grade["binary_score"]}*\n"})
+    return answer_grade["binary_score"]
 
 
 def grade_generation_v_documents_and_question(state: GraphState, config: Dict):
