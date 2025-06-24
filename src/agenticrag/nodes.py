@@ -2,7 +2,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import ToolNode
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import Dict, Literal
 from langchain.tools.retriever import create_retriever_tool
@@ -88,7 +88,7 @@ def generate_query_or_respond(state: GraphState, config: Dict):
     logger.info("Generating query or response")
     stream_writer({"custom_key": "*Generating query or response...*\n"})
     state["messages"].append(HumanMessage(content=state["question"]))
-    response_model = init_chat_model("gemini-2.0-flash", temperature=0, model_provider="google_genai")
+    response_model = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
     response = (
         response_model
         # highlight-next-line
@@ -131,8 +131,8 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
 
 
     # LLM with function call
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
-    structured_llm_grader = llm.with_structured_output(GradeDocuments)
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+    parser = JsonOutputParser(pydantic_object=GradeDocuments)
 
     # Prompt
     GRADE_PROMPT = (
@@ -140,7 +140,8 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
     "Here is the retrieved document: \n\n {context} \n\n"
     "Here is the user question: {question} \n"
     "If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n"
-    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
+    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question.\n"
+    "{format_instructions}"
     )
 
     grade_prompt = ChatPromptTemplate.from_messages(
@@ -149,9 +150,9 @@ def grade_documents(state: GraphState, config: Dict) -> Literal["generate_answer
         ]
     )
 
-    retrieval_grader = grade_prompt | structured_llm_grader
-    response = retrieval_grader.invoke({"question": question, "context": documents})
-    score = response.binary_score
+    retrieval_grader = grade_prompt | llm | parser
+    response = retrieval_grader.invoke({"question": question, "context": documents, "format_instructions": parser.get_format_instructions()})
+    score = response["binary_score"]
     
     if score == "yes" or iteration >= 3:
         logger.info(f"Documents are relevant to the question, generating answer. Iteration: {iteration}")
@@ -189,7 +190,7 @@ def rewrite_question(state: GraphState, config: Dict):
             description="The final improved question that is optimized for vectorstore retrieval and ready to be use as a search query.")
     
     # LLM
-    llm = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
+    llm = init_chat_model("gemini-2.5-flash-lite-preview-06-17", temperature=0, model_provider="google_genai")
     structured_llm_rewriter = llm.with_structured_output(RewriteQuestion)
 
     # Prompt
