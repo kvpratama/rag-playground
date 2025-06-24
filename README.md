@@ -4,16 +4,16 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 
 ## Implementations
 
-### 1. Self-RAG
+### 1. RAPTOR
 
-**Overview**: A Self-Reflective RAG system that enhances traditional RAG with self-assessment capabilities. It evaluates the quality of retrieved documents and generated responses, enabling iterative improvements.
+**Overview**: Implements Recursive Abstractive Processing for Tree-Organized Retrieval, providing advanced document processing and hierarchical information retrieval.
 
 **Key Features**:
-- Self-assessment of document relevance
-- Iterative response refinement
-- Quality control for generated outputs
+- Hierarchical document clustering
+- Multi-level summarization
+- Efficient retrieval from large document collections
 
-![Self-RAG Workflow](./imgs/selfrag.png)
+![RAPTOR Workflow](./imgs/raptor.png)
 
 ### 2. Corrective RAG (CRAG)
 
@@ -26,7 +26,18 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 
 ![CRAG Workflow](./imgs/crag.png)
 
-### 3. Agentic RAG
+### 3. Self-RAG
+
+**Overview**: A Self-Reflective RAG system that enhances traditional RAG with self-assessment capabilities. It evaluates the quality of retrieved documents and generated responses, enabling iterative improvements.
+
+**Key Features**:
+- Self-assessment of document relevance
+- Iterative response refinement
+- Quality control for generated outputs
+
+![Self-RAG Workflow](./imgs/selfrag.png)
+
+### 4. Agentic RAG
 
 **Overview**: Combines LLM agents with RAG, enabling dynamic decision-making during the retrieval and generation process through an agent-based architecture.
 
@@ -37,7 +48,7 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 
 ![Agentic RAG Workflow](./imgs/agenticrag.png)
 
-### 4. Adaptive RAG
+### 5. Adaptive RAG
 
 **Overview**: Intelligently routes queries based on complexity, choosing between direct generation and a more sophisticated RAG approach.
 
@@ -47,18 +58,6 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 - Optimized performance for different query types
 
 ![Adaptive RAG Workflow](./imgs/adaptiverag.png)
-
-### 5. RAPTOR
-
-**Overview**: Implements Recursive Abstractive Processing for Tree-Organized Retrieval, providing advanced document processing and hierarchical information retrieval.
-
-**Key Features**:
-- Hierarchical document clustering
-- Multi-level summarization
-- Efficient retrieval from large document collections
-
-![RAPTOR Workflow](./imgs/raptor.png)
-
 
 ## License
 
