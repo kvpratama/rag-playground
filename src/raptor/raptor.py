@@ -21,13 +21,13 @@ RANDOM_SEED = 123  # Fixed seed for reproducibility
 ### --- Code from citations referenced above (added comments and docstrings) --- ###
 
 from langchain.chat_models import init_chat_model
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 
 model = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
 
-# embd  = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
-embd = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+embd = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
 def global_cluster_embeddings(
     embeddings: np.ndarray,
