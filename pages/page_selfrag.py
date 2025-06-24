@@ -11,6 +11,13 @@ st.title("Self-RAG")
 st.markdown("""
 Self-RAG is a Retrieval-Augmented Generation (RAG) approach that integrates self-evaluation or self-assessment of retrieved documents and generation.
 """)
+st.markdown("""
+**Key Features**:
+- Self-assessment of document relevance
+- Iterative response refinement
+- Quality control for generated outputs
+""")
+st.image("imgs/selfrag.png", caption="Self-RAG Workflow")
 
 if 'thread_id_selfrag' not in st.session_state:
     with st.form("selfrag_form"):
