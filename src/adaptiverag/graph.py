@@ -7,7 +7,7 @@ from selfrag.nodes import (
     decide_to_generate,
     grade_generation_v_documents_and_question,
 )
-from adaptiverag.nodes import init_retriever_node, should_continue, question_grader
+from adaptiverag.nodes import init_retriever_node, should_continue, question_grader, direct_generation, adaptive_routing_node
 from adaptiverag.state import GraphState, GraphStateInput, GraphStateOutput, SubGraphStateInput, SubGraphStateOutput
 
 
@@ -46,15 +46,20 @@ selfrag_workflow = selfrag_subgraph.compile()
 builder = StateGraph(GraphState, input=GraphStateInput, output=GraphStateOutput)
 builder.add_node("init_retriever_node", init_retriever_node)
 builder.add_node("question_grader", question_grader)
-builder.add_node("subgraph", selfrag_workflow)
+builder.add_node("selfrag_workflow", selfrag_workflow)
+builder.add_node("direct_generation", direct_generation)
 
 builder.add_edge(START, "init_retriever_node")
 builder.add_conditional_edges("init_retriever_node", should_continue, {
     "question_grader": "question_grader",
     END: END,
 })
-builder.add_edge("question_grader", "subgraph")
-builder.add_edge("subgraph", END)
+builder.add_conditional_edges("question_grader", adaptive_routing_node, {
+    "selfrag_workflow": "selfrag_workflow",
+    "direct_generation": "direct_generation",
+})
+builder.add_edge("selfrag_workflow", END)
+builder.add_edge("direct_generation", END)
 
 # memory = MemorySaver()
 workflow = builder.compile()

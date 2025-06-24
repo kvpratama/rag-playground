@@ -96,3 +96,47 @@ def question_grader(state: GraphState, config: Dict):
     logger.info(f"Question graded with grade: {grade.grade} and reasoning: {grade.reasoning}")
     stream_writer({"custom_key": f"*Question graded with grade: {grade.grade}*\n"})
     return {"max_iterations": int(grade.grade)}
+
+
+def adaptive_routing_node(state: GraphState, config: Dict):
+    """
+    Determine the next node to call based on the question grade.
+    """
+    logger.info("Adaptive routing node")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Adaptive routing node...*\n"})
+    
+    if state["max_iterations"] == 0:
+        logger.info("Question grade is 0, answering with no retrieval.")
+        stream_writer({"custom_key": "*Question grade is 0, answering with no retrieval.*\n"})
+        return "direct_generation"
+    
+    logger.info("Question grade is not 0, continuing workflow.")
+    stream_writer({"custom_key": "*Question grade is not 0, continuing workflow.*\n"})
+    return "subgraph"
+    
+
+def direct_generation(state: GraphState, config: Dict):
+    """
+    Generate a response without retrieval.
+    """
+    logger.info("Answering with no retrieval")
+    stream_writer = get_stream_writer()
+    stream_writer({"custom_key": "*Answering with no retrieval...*\n"})
+    
+    # LLM with function call
+    llm = init_chat_model("gemma-3-12b-it", temperature=0, model_provider="google_genai")
+
+    # Prompt
+    prompt = """You are a helpful RAG assistant. Answer the following question: \n\n {question} \n\n Make sure to be respectful and concise. End your response with a courteous offer to assist further using your retrieval-augmented capabilities."""
+    generation_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("human", prompt),
+        ]
+    )
+    
+    generation_chain = generation_prompt | llm | StrOutputParser()
+    generation = generation_chain.invoke({"question": state["question"]})
+    logger.info(f"Generated answer: {generation}")
+    stream_writer({"custom_key": f"*{generation}*\n"})
+    return {"generation": generation}
