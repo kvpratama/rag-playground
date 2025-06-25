@@ -71,7 +71,8 @@ A collection of advanced Retrieval-Augmented Generation (RAG) implementations us
 
 ## Streamlit Frontend
 
-This project includes an intuitive Streamlit-based frontend to streamline experimentation and enhance usability. 
+This project includes an intuitive Streamlit-based frontend to streamline experimentation and enhance usability.
+Check out our demo [here.](https://rag-playground-kvpratama.streamlit.app/) (*Note: You may encounter errors if the API rate limit is exceeded.*).
 
 ## Installation
 
