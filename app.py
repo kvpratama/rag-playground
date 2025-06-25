@@ -1,4 +1,7 @@
 import streamlit as st
+import sys
+import os
+sys.path.append(os.path.abspath("src"))
 
 st.set_page_config(page_title="RAG Playground", page_icon=":material/edit:")
 
