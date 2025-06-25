@@ -44,5 +44,5 @@ packages = ["commonlib", "raptor", "crag", "selfrag", "agenticrag", "adaptiverag
 "adaptiverag" = "src/adaptiverag"
 
 [tool.uv]
-required-environments = ["sys_platform == 'linux'", "sys_platform == 'win32'"]
+environments = ["sys_platform == 'linux'"]
 
