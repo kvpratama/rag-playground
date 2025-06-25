@@ -1,44 +1,31 @@
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
-import chromadb
-from typing import List
-# from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.vectorstores import InMemoryVectorStore
+from typing import List, Dict
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 import logging
-
 
 logger = logging.getLogger(__name__)
 
-# Create embeddings instance once (singleton pattern)
-_embeddings = None
+# Global storage for multiple vectorstores
+_vectorstores: Dict[str, InMemoryVectorStore] = {}
 
-def get_embeddings():
-    global _embeddings
-    if _embeddings is None:
-        # _embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+def get_vectorstore(thread_id: str):
+    global _vectorstores
+    
+    if thread_id not in _vectorstores:
+        logger.info(f"Initializing vectorstore for thread: {thread_id}")
         _embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
-    return _embeddings
+        _vectorstores[thread_id] = InMemoryVectorStore(_embeddings)
+        logger.info(f"Created new vectorstore for thread: {thread_id}")
+    
+    logger.info(f"Returning vectorstore for thread: {thread_id}")
+    return _vectorstores[thread_id]
 
 def build_vectorstore(thread_id: str, urls: List[str]):
-    persist_directory = f"./chroma_db"
-    embd = get_embeddings()  # Reuse embeddings instance
-    collection_name = f"{thread_id}"
-
-    # Check if collection exists using ChromaDB client
-    client = chromadb.PersistentClient(path=persist_directory)
-    existing_collections = [c.name for c in client.list_collections()]
+    vectorstore = get_vectorstore(thread_id)
     
-    if collection_name in existing_collections:
-        logger.info("Database directory exists and is not empty")
-        # Load existing database
-        vectorstore = Chroma(
-            persist_directory=persist_directory,
-            embedding_function=embd,
-            collection_name=collection_name,
-        )
-    else:
+    if len(vectorstore.store.items()) == 0:
         logger.info(f"Building vectorstore from URLs: {urls}")
         docs = [WebBaseLoader(url).load() for url in urls]
         docs_list = [item for sublist in docs for item in sublist]
@@ -47,15 +34,10 @@ def build_vectorstore(thread_id: str, urls: List[str]):
             chunk_size=250, chunk_overlap=50
         )
         doc_splits = text_splitter.split_documents(docs_list)
-
-        # Add to vectorDB
-        vectorstore = Chroma.from_documents(
-            documents=doc_splits,
-            collection_name=collection_name,
-            embedding=embd,
-            persist_directory=persist_directory,
-        )
-        
+        vectorstore.add_documents(documents=doc_splits)
+    else:
+        logger.info(f"Vectorstore for thread: {thread_id} already exists.")
+    
     retriever = vectorstore.as_retriever()
-    logger.info("Vectorstore built successfully and retriever created.")
+    logger.info(f"Vectorstore built successfully and retriever created for thread: {thread_id}")
     return retriever
