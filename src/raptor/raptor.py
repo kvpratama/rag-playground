@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional, Tuple
-import os
 import numpy as np
 import pandas as pd
 import umap
@@ -7,22 +6,19 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from sklearn.mixture import GaussianMixture
 import time
-from langchain_chroma import Chroma
+from langchain_core.vectorstores import InMemoryVectorStore
 import pandas as pd
 import tiktoken
 from bs4 import BeautifulSoup as Soup
 from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
+from langchain.chat_models import init_chat_model
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import logging
 
 logger = logging.getLogger(__name__)
 
 RANDOM_SEED = 123  # Fixed seed for reproducibility
-
-### --- Code from citations referenced above (added comments and docstrings) --- ###
-
-from langchain.chat_models import init_chat_model
-# from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+_vectorstores: Dict[str, InMemoryVectorStore] = {}
 
 
 model = init_chat_model("gemini-2.0-flash-lite", temperature=0, model_provider="google_genai")
@@ -402,20 +398,25 @@ def raptor_loader(leaf_texts: str) -> Dict[int, Tuple[pd.DataFrame, pd.DataFrame
     return results
 
 
+def get_vectorstore(thread_id: str):
+    global _vectorstores
+    
+    if thread_id not in _vectorstores:
+        logger.info(f"Initializing vectorstore for thread: {thread_id}")
+        _embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        _vectorstores[thread_id] = InMemoryVectorStore(_embeddings)
+        logger.info(f"Created new vectorstore for thread: {thread_id}")
+    
+    logger.info(f"Returning vectorstore for thread: {thread_id}")
+    return _vectorstores[thread_id]
+
+
 def build_vectorstore(thread_id: str, url: str, max_depth: int = 30):
     """Builds a vectorstore from a URL by loading documents, processing them with RAPTOR, and creating a retriever."""
 
-    # LangChain Conceptual Guide
-    # url = "https://python.langchain.com/docs/concepts/"
-
-    persist_directory = f"./chroma_db/{thread_id}"
-    if os.path.exists(persist_directory) and os.listdir(persist_directory):
+    vectorstore = get_vectorstore(thread_id)
+    if len(vectorstore.store.items()) != 0:
         logger.info("Database directory exists and is not empty")
-        # Load existing database
-        vectorstore = Chroma(
-            persist_directory=persist_directory,
-            embedding_function=embd
-        )
     else:
         logger.info(f"Building vectorstore from URL: {url} with max depth: {max_depth}")
 
@@ -438,8 +439,7 @@ def build_vectorstore(thread_id: str, url: str, max_depth: int = 30):
 
         logger.info(f"Total texts after RAPTOR processing: {len(all_texts)}")
         
-        # Now, use all_texts to build the vectorstore with Chroma
-        vectorstore = Chroma.from_texts(texts=all_texts, embedding=embd, persist_directory=persist_directory)
+        vectorstore.add_texts(texts=all_texts)
     
     retriever = vectorstore.as_retriever()
 
