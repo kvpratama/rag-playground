@@ -19,6 +19,7 @@ dependencies = [
     "matplotlib>=3.10.3",
     "numba>=0.61.2",
     "pandas>=2.3.0",
+    "pysqlite3-binary",
     "scikit-learn>=1.7.0",
     "sentence-transformers>=4.1.0",
     "streamlit>=1.46.0",
@@ -41,3 +42,7 @@ packages = ["commonlib", "raptor", "crag", "selfrag", "agenticrag", "adaptiverag
 "selfrag" = "src/selfrag"
 "agenticrag" = "src/agenticrag"
 "adaptiverag" = "src/adaptiverag"
+
+[tool.uv]
+required-environments = ["sys_platform == 'linux'", "sys_platform == 'win32'"]
+

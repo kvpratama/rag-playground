@@ -1,7 +1,9 @@
+__import__('pysqlite3')
 import streamlit as st
 import sys
 import os
 sys.path.append(os.path.abspath("src"))
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 st.set_page_config(page_title="RAG Playground", page_icon=":material/edit:")
 
